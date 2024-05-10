@@ -5,7 +5,7 @@ module.exports = function(eleventyConfig) {
         eleventyConfig.addShortcode(shortcodesKey, shortcodes[shortcodesKey]);
     }
 
-    eleventyConfig.addPassthroughCopy({"js/*.js": "assets/js" });
+    //eleventyConfig.addPassthroughCopy({"js/*.js": "assets/js" });
 
     eleventyConfig.setServerPassthroughCopyBehavior("passthrough");
 

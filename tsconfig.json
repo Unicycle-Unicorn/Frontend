@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "CommonJS",
+    "removeComments": true,
+    "outDir": "./www/assets/js",
+    "rootDir": "./js"
+  },
+  "include": ["js/**/*.ts"]
+}
