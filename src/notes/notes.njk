@@ -1,0 +1,70 @@
+---
+layout: page.njk
+---
+
+This is the notes page
+
+<textarea id="textarea" oninput="update_debounce(this.value);">
+
+
+</textarea>
+
+<script>
+    let textarea = document.getElementById("textarea");
+
+    let update_debounce = debounce(updating, 300)
+
+    function updating(val) {
+        post(val);
+    }
+
+    function get() {
+        fetch('https://api.unicycleunicorn.net/notes/notes', {
+            method: "GET",
+            })
+            // Parse the response as JSON
+            .then(response => response.json())
+            // Log the response to the console
+            .then(data => textarea.value = data.content)
+            // Handle any errors
+            .catch(error => console.log(error));
+        console.log("GET")
+    }
+
+    // Returns a function, that, as long as it continues to be invoked, will not
+    // be triggered. The function will be called after it stops being called for
+    // N milliseconds. If `immediate` is passed, trigger the function on the
+    // leading edge, instead of the trailing.
+    function debounce(func, wait, immediate) {
+        var timeout;
+        return function() {
+            var context = this, args = arguments;
+            var later = function() {
+                timeout = null;
+                if (!immediate) func.apply(context, args);
+            };
+            var callNow = immediate && !timeout;
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+            if (callNow) func.apply(context, args);
+        };
+    };
+
+    function post(content) {
+        fetch('https://api.unicycleunicorn.net/notes/notes', {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+                // Add other headers as needed
+            },
+            body: JSON.stringify({
+                Content: content
+            })
+        })
+            // Handle any errors
+            .catch(error => console.log(error));
+        console.log("POST")
+    }
+
+    get()
+</script>
