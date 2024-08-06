@@ -15,8 +15,6 @@ function not_saved() {
 }
 has_saved();
 
-
-
 let update_debounce = Utils.Debounce(updating, 300);
 
 function call_update(val: string) {
@@ -24,39 +22,16 @@ function call_update(val: string) {
     update_debounce(val);
 }
 
-class API {
-    private static URL: string = "https://api.unicycleunicorn.net/";
-
-    public static async Get(endpoint: string): Promise<any> {
-        let url: string = this.URL + endpoint;
-        let ops: {} = {
-            method: "GET",
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        };
-        let response: Response = await fetch(url, ops);
-        return await response.json();
-    }
-
-    public static async Post(endpoint: string, data: any): Promise<void> {
-        let url: string = this.URL + endpoint;
-        let ops: {} = {
-            method: "POST",
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        };
-        await fetch(url, ops);
-    }
-}
-
 async function updating(val: string) {
-    await API.Post("notes/notes", {
+    await UniApi.Request('POST', "notes", 'notes', 'PostNotes', {
         content: val
-    });
+    }, {
+        "Content-Type": "application/json"
+    })
     has_saved();
 }
 
-API.Get("notes/notes").then(note => textarea.value = note.content)
+UniApi.Request("GET", "notes", "notes", "GetNotes").then(async note => {
+    const c = await note.json();
+    textarea.value = c.content;
+})
