@@ -9,6 +9,17 @@ module.exports = function(eleventyConfig) {
 
     eleventyConfig.setServerPassthroughCopyBehavior("passthrough");
 
+    eleventyConfig.setServerOptions({
+        https: {
+            key: "./certs/ui.unicycleunicorn.net-key.pem",
+            cert: "./certs/ui.unicycleunicorn.net.pem",
+        },
+
+        port: 443
+    });
+
+    console.log("https://ui.unicycleunicorn.net");
+
     return {
         dir: {
             input: "src",

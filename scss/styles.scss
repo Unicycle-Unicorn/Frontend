@@ -2,7 +2,7 @@
 
 // Colors
 $color-primary: #8c2a0d;
-$color-primary-light: #ECA28E;
+$color-primary-light: #bfec8e;
 $color-primary-dark: #381305;
 
 // Override Bootstrap's Sass default variables
@@ -44,7 +44,7 @@ $primary: $color-primary;
 $light: $color-primary-light;
 
 $body-color: #000;
-$body-bg: #f5ecec;
+$body-bg: #edb7b7;
 
 // Required
 @import "../node_modules/bootstrap/scss/variables";

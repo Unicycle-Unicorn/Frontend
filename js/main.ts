@@ -22,11 +22,7 @@ class Utils {
 class UniApi {
     // Urls are defined as follows:
     // base/service/controller/action
-    /*
-    private static BaseUrl = "http://localhost";
-    private static IgnoreService = true;*/
     private static BaseUrl = "https://api.unicycleunicorn.net";
-    private static IgnoreService = false;
     private static Endpoints = {};
 
     //region Enumerations
@@ -196,22 +192,8 @@ class UniApi {
     //endregion
 
     private static BuildUrl(service: string, controller: string, action: string, additions: string = null) {
-        let base = "";
-        if (UniApi.IgnoreService) {
-            let servicePort = "";
-            switch (service.toLowerCase()) {
-                case "cam":
-                    servicePort = "5048";
-                    break;
-                case "notes":
-                    servicePort = "5186";
-                    break;
-            }
+        let base = `${this.BaseUrl}/${service}/${controller}/${action}`;
 
-            base = `${this.BaseUrl}:${servicePort}/${controller}/${action}`
-        } else {
-            base = `${this.BaseUrl}/${service}/${controller}/${action}`;
-        }
         if ((additions == null) || (additions == "")) {
             return base;
         } else {

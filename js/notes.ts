@@ -27,7 +27,7 @@ async function updating(val: string) {
         content: val
     }, {
         "Content-Type": "application/json"
-    })
+    });
     has_saved();
 }
 
