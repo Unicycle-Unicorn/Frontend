@@ -15,9 +15,20 @@ class Utils {
             timeout = setTimeout(later, wait);
         };
     };
-
-
 }
+
+let welcome_message_element: HTMLElement;
+function UpdateWelcomeMessage() {
+    console.log(`Username: ${localStorage.getItem("username")}`);
+    console.log(welcome_message_element);
+
+    if (localStorage.getItem("username")) {
+        welcome_message_element.innerText = `Welcome ${localStorage.getItem("username")}`;
+    } else {
+        welcome_message_element.innerText = "Please Log In";
+    }
+}
+
 
 class UniApi {
     // Urls are defined as follows:
@@ -98,6 +109,10 @@ class UniApi {
             console.log(`Request Informational Response: ${method} ${url}`);
         } else if (response.status >= 200 && response.status <= 299) { // Successful Response
             console.log(`Request Successful Response: ${method} ${url}`);
+            if (defaultHeaders[UniApi.XHeaders.XAuthUser]) {
+                localStorage.setItem("username", defaultHeaders[UniApi.XHeaders.XAuthUser]);
+                UpdateWelcomeMessage();
+            }
         } else if (response.status >= 300 && response.status <= 399) { // Redirection Response
             console.log(`Request Redirection Response: ${method} ${url}`);
         } else if (response.status >= 400 && response.status <= 499) { // Client Error Response
@@ -202,4 +217,8 @@ class UniApi {
     }
 }
 
-// UniApi.Request("GET", "cam", "Test", "TestSessioned");
+
+window.addEventListener('load', function() {
+    welcome_message_element = document.getElementById("welcome-message");
+    UpdateWelcomeMessage();
+});

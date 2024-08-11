@@ -22,6 +22,7 @@
     "@11ty/eleventy": "^2.0.1"
   },
   "dependencies": {
+    "@11ty/eleventy-img": "^4.0.2",
     "bootstrap": "^5.3.3",
     "hostile": "^1.4.0",
     "node-sass": "^9.0.0",

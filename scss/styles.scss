@@ -1,9 +1,12 @@
 // Primary logo color: 8c2a0d
 
 // Colors
-$color-primary: #8c2a0d;
-$color-primary-light: #bfec8e;
-$color-primary-dark: #381305;
+// https://coolors.co/212429-2b3034-663f78-9561ae-ebb1e4
+$color-primary-dark: #212129;
+$color-primary: #2B3034;
+$color-primary-light: #663f78;
+$color-primary-accent: #9561AE;
+$color-primary-highlight: #EBB1E4;
 
 // Override Bootstrap's Sass default variables
 //
@@ -32,7 +35,7 @@ $color-primary-dark: #381305;
 // Place variable overrides first, then import just the styles you need. Note that some stylesheets are required no matter what.
 
 // Toggle global options
-$enable-gradients: true;
+$enable-gradients: false;
 $enable-shadows: true;
 
 // Include functions first
@@ -40,11 +43,11 @@ $enable-shadows: true;
 
 // Customize some defaults
 
-$primary: $color-primary;
-$light: $color-primary-light;
+$primary: $color-primary-dark;
+$light: $color-primary;
 
 $body-color: #000;
-$body-bg: #edb7b7;
+$body-bg: $color-primary;
 
 // Required
 @import "../node_modules/bootstrap/scss/variables";
