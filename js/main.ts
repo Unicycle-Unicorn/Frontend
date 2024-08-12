@@ -17,15 +17,64 @@ class Utils {
     };
 }
 
-let welcome_message_element: HTMLElement;
-function UpdateWelcomeMessage() {
-    console.log(`Username: ${localStorage.getItem("username")}`);
-    console.log(welcome_message_element);
+class WebStorage {
+    private static Subscribers: { [x: string]: any; } = {};
 
-    if (localStorage.getItem("username")) {
-        welcome_message_element.innerText = `Welcome ${localStorage.getItem("username")}`;
-    } else {
-        welcome_message_element.innerText = "Please Log In";
+    private static GetSubscribers(key: string) {
+        return WebStorage.Subscribers[key];
+    }
+
+    public static Set(key: string, value: string) {
+        console.log("set");
+        let oldValue = localStorage.getItem(key);
+        localStorage.setItem(key, value);
+        let keySubscribers = WebStorage.GetSubscribers(key);
+        console.log(keySubscribers);
+        if (keySubscribers) {
+            keySubscribers.forEach(subscriber => {
+                subscriber(value, oldValue);
+            });
+        }
+    }
+
+    public static Get(key: string) {
+        return localStorage.getItem(key);
+    }
+
+    public static Delete(key: string) {
+        let oldValue = localStorage.getItem(key);
+        localStorage.removeItem(key);
+        let keySubscribers = WebStorage.GetSubscribers(key);
+        if (keySubscribers) {
+            keySubscribers.forEach(subscriber => {
+                subscriber(null, oldValue);
+            });
+        }
+    }
+
+    public static Subscribe(key: string, callback: (newValue: string, oldValue: string) => void, immediate: boolean = false) {
+        let keySubscribers = WebStorage.GetSubscribers(key);
+        if (!keySubscribers) {
+            WebStorage.Subscribers[key] = [];
+            keySubscribers = WebStorage.GetSubscribers(key);
+        }
+
+        keySubscribers.push(callback);
+
+        if (immediate) {
+            let value = WebStorage.Get(key);
+            callback(value, value);
+        }
+    }
+
+    public static Unsubscribe(key: string, callback: (newValue: string, oldValue: string) => void) {
+        let keySubscribers = WebStorage.GetSubscribers(key);
+        if (keySubscribers) {
+            let index = keySubscribers.indexOf(callback)
+            if (index > -1) {
+                keySubscribers.splice(index, 1);
+            }
+        }
     }
 }
 
@@ -110,8 +159,7 @@ class UniApi {
         } else if (response.status >= 200 && response.status <= 299) { // Successful Response
             console.log(`Request Successful Response: ${method} ${url}`);
             if (defaultHeaders[UniApi.XHeaders.XAuthUser]) {
-                localStorage.setItem("username", defaultHeaders[UniApi.XHeaders.XAuthUser]);
-                UpdateWelcomeMessage();
+                WebStorage.Set("username", defaultHeaders[UniApi.XHeaders.XAuthUser]);
             }
         } else if (response.status >= 300 && response.status <= 399) { // Redirection Response
             console.log(`Request Redirection Response: ${method} ${url}`);
@@ -219,6 +267,14 @@ class UniApi {
 
 
 window.addEventListener('load', function() {
-    welcome_message_element = document.getElementById("welcome-message");
-    UpdateWelcomeMessage();
+    let welcome_message_element = document.getElementById("welcome-message");
+    WebStorage.Subscribe("username", (newValue, oldValue) => {
+        console.log(`Username: ${newValue}. Was: ${oldValue}`);
+
+        if (newValue) {
+            welcome_message_element.innerText = `Welcome ${newValue}`;
+        } else {
+            welcome_message_element.innerText = "Please Log In";
+        }
+    }, true);
 });
