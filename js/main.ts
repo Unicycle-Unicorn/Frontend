@@ -463,6 +463,14 @@ function LoginAccountCloseAndClear() {
     ValidationUtils.SetInvalidText(loginPasswordElement);
 }
 
+function LoginAccountResetValidation() {
+    const loginUsernameElement = document.getElementById("login-username") as HTMLInputElement;
+    const loginPasswordElement = document.getElementById("login-password") as HTMLInputElement;
+
+    ValidationUtils.SetInvalidText(loginUsernameElement);
+    ValidationUtils.SetInvalidText(loginPasswordElement);
+}
+
 async function LoginAccount() {
     const loginUsernameElement = document.getElementById("login-username") as HTMLInputElement;
     const loginPasswordElement = document.getElementById("login-password") as HTMLInputElement;
@@ -479,10 +487,8 @@ async function LoginAccount() {
         if (response.ok) {
             LoginAccountCloseAndClear();
         } else {
-            if (response.status == 401) {
-                ValidationUtils.SetInvalidText(loginUsernameElement, "Username or password is incorrect");
-                ValidationUtils.SetInvalidText(loginPasswordElement, "Username or password is incorrect");
-            }
+            ValidationUtils.SetInvalidText(loginUsernameElement, "Incorrect credentials");
+            ValidationUtils.SetInvalidText(loginPasswordElement, "Incorrect credentials");
         }
     }
 }

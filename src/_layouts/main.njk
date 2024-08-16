@@ -18,12 +18,12 @@ layout: page.njk
             <div class="modal-body was-validated">
                 <div class="mb-3">
                     <label for="login-username" class="form-label">Username</label>
-                    <input type="text" class="form-control text-white" required id="login-username">
+                    <input type="text" class="form-control text-white" required id="login-username" oninput="LoginAccountResetValidation()">
                     <div class="invalid-feedback"></div>
                 </div>
                 <div class="mb-3">
                     <label for="login-password" class="form-label">Password</label>
-                    <input type="password" class="form-control text-white" required id="login-password">
+                    <input type="password" class="form-control text-white" required id="login-password" oninput="LoginAccountResetValidation()">
                     <div class="invalid-feedback"></div>
                 </div>
             </div>
