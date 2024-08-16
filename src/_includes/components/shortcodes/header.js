@@ -41,6 +41,8 @@ module.exports = async function(data) {
             ${await shortcodes.image("Logo.png", "UnicycleUnicorn's Logo", "align-top", "30")}
         </a>
         <a href="/settings" class="navbar-text" id="welcome-message">Please Log In</a>
+        <button class="navbar-text bg-primary" onclick="UniApi.Login()">Log In</button>
+        <button class="navbar-text bg-primary-subtle" onclick="UniApi.CreateAccount()">Create Account</button>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>

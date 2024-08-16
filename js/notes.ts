@@ -23,12 +23,7 @@ function call_update(val: string) {
 }
 
 async function updating(val: string) {
-    await UniApi.Request('POST', "notes", 'notes', 'PostNotes', {
-        content: val
-    }, {
-        "Content-Type": "application/json",
-
-    });
+    await UniApi.PostJson('notes', 'notes', 'PostNotes', {content: val});
     has_saved();
 }
 

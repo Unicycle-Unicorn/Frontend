@@ -3,11 +3,11 @@ class Utils {
     // be triggered. The function will be called after it stops being called for
     // N milliseconds. If `immediate` is passed, trigger the function on the
     // leading edge, instead of the trailing
-    static Debounce(func: Function, wait: number): Function {
-        var timeout: number;
+    public static Debounce(func: Function, wait: number): Function {
+        let timeout: number;
         return function() {
-            var context = this, args = arguments;
-            var later = function() {
+            let context = this, args = arguments;
+            let later = function() {
                 timeout = null;
                 func.apply(context, args);
             };
@@ -25,11 +25,9 @@ class WebStorage {
     }
 
     public static Set(key: string, value: string) {
-        console.log("set");
         let oldValue = localStorage.getItem(key);
         localStorage.setItem(key, value);
         let keySubscribers = WebStorage.GetSubscribers(key);
-        console.log(keySubscribers);
         if (keySubscribers) {
             keySubscribers.forEach(subscriber => {
                 subscriber(value, oldValue);
@@ -78,12 +76,35 @@ class WebStorage {
     }
 }
 
+function RequestUserCredentials(withUsername: boolean): {username: string | null | undefined, password: string}  {
+    let password: string;
+    let username: string;
+
+    if (withUsername) {
+        username = prompt("Enter Username", "Admin");
+    }
+
+    password = prompt("Enter Password", "password");
+
+    return {
+        username,
+        password
+    }
+}
 
 class UniApi {
     // Urls are defined as follows:
     // base/service/controller/action
     private static BaseUrl = "https://api.unicycleunicorn.net";
-    private static Endpoints = {};
+    private static Endpoints = UniApi.InitializeEndpoints();
+
+    private static InitializeEndpoints() {
+        let endpoints = JSON.parse(localStorage.getItem("endpoints"));
+        if (!endpoints) {
+            endpoints = {}
+        }
+        return endpoints;
+    }
 
     //region Enumerations
     private static XHeaders = Object.freeze({
@@ -97,26 +118,42 @@ class UniApi {
     private static XCookies = Object.freeze({
         Session: "Session", // Shouldn't be used manually by frontend - here for completeness
         CSRF: "CSRF"
-    })
+    });
 
     private static AuthTypes = Object.freeze({
         SessionAuth: "SessionAuth",
         StrictSessionAuth: "StrictSessionAuth",
-        ApiKeyAuth: "ApiKeyAuth",
+        ApiKeyAuth: "ApiKeyAuth", // Shouldn't be used by frontend - here for completeness
         CredentialAuth: "CredentialAuth"
-    })
+    });
     //endregion
 
     //region Request & Auth
-    private static async Login() {
+    public static async Login() {
         const response = await UniApi.Request('POST', "cam", "User", "Login");
+
+        if (!response.ok) {
+            console.log("Failed Login");
+        }
+    };
+
+    public static async CreateAccount() {
+        const response = await UniApi.PostJson("cam", "User", "CreateAccount", RequestUserCredentials(true));
 
         if (!response.ok) {
             console.log("Failed Login");
         }
     }
 
-    public static async Request(method: string, service: string, controller: string, action: string, body: any = null, headers: object = {}) {
+    public static async PostJson(service: string, controller: string, action: string, body: object = {}, headers: object = {}): Promise<Response> {
+        const defaultHeaders = {
+            "Content-Type": "application/json"
+        };
+
+        return this.Request('POST', service, controller, action, JSON.stringify(body), {...defaultHeaders, ...headers});
+    }
+
+    public static async Request(method: string, service: string, controller: string, action: string, body: any = null, headers: object = {}): Promise<Response> {
 
         const defaultHeaders = {};
 
@@ -137,11 +174,12 @@ class UniApi {
                 break;
             case this.AuthTypes.StrictSessionAuth: // Session & credentials
                 defaultHeaders[UniApi.XHeaders.XAuthCSRF] = UniApi.RetrieveCSRFCookie();
-                defaultHeaders[UniApi.XHeaders.XAuthPass] = prompt("Enter Password", "password");
+                defaultHeaders[UniApi.XHeaders.XAuthPass] = RequestUserCredentials(false).password;
                 break;
             case this.AuthTypes.CredentialAuth: // Credentials only
-                defaultHeaders[UniApi.XHeaders.XAuthUser] = prompt("Enter Username", "Admin");
-                defaultHeaders[UniApi.XHeaders.XAuthPass] = prompt("Enter Password", "password");
+                let userCredentials = RequestUserCredentials(true);
+                defaultHeaders[UniApi.XHeaders.XAuthUser] = userCredentials.username;
+                defaultHeaders[UniApi.XHeaders.XAuthPass] = userCredentials.password;
                 break;
             case this.AuthTypes.ApiKeyAuth: // Api key - unsupported by frontend
                 throw new Error(`Requested endpoint only supports ApiKeyAuth: ${url}`);
@@ -149,7 +187,7 @@ class UniApi {
 
         const response = await fetch(url, {
             method: method,
-            body: body == null ? null : JSON.stringify(body),
+            body: body == null ? null : body,
             headers: {...defaultHeaders, ...headers},
             credentials: 'include'
         });
@@ -229,6 +267,7 @@ class UniApi {
         if (response.ok) {
             const metadata = await response.json();
             this.Endpoints[metadata.service] = metadata.endpoints;
+            WebStorage.Set("endpoints", JSON.stringify(UniApi.Endpoints));
         }
     }
 
@@ -265,12 +304,9 @@ class UniApi {
     }
 }
 
-
 window.addEventListener('load', function() {
     let welcome_message_element = document.getElementById("welcome-message");
     WebStorage.Subscribe("username", (newValue, oldValue) => {
-        console.log(`Username: ${newValue}. Was: ${oldValue}`);
-
         if (newValue) {
             welcome_message_element.innerText = `Welcome ${newValue}`;
         } else {
