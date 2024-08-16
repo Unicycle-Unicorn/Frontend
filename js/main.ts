@@ -1,3 +1,28 @@
+
+class Popups {
+    public static Success(content: string) {
+        console.log(content);
+        alert(content);
+    }
+
+    public static Failure(content: string) {
+        console.error(content);
+        alert(content);
+    }
+}
+
+class ModalUtils {
+    public static Close(id: string) {
+        // @ts-ignore
+        bootstrap.Modal.getOrCreateInstance(document.getElementById(id)).hide();
+    }
+
+    public static Open(id: string) {
+        // @ts-ignore
+        bootstrap.Modal.getOrCreateInstance(document.getElementById(id)).show();
+    }
+}
+
 class Utils {
     // Returns a function, that, as long as it continues to be invoked, will not
     // be triggered. The function will be called after it stops being called for
@@ -15,6 +40,20 @@ class Utils {
             timeout = setTimeout(later, wait);
         };
     };
+
+    public static NotNullOrEmpty(value: string): boolean {
+        if (value) {
+            if (value != "") {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static IsNullOrEmpty(value: string) {
+        return !Utils.NotNullOrEmpty(value);
+    }
 }
 
 class WebStorage {
@@ -29,7 +68,7 @@ class WebStorage {
         localStorage.setItem(key, value);
         let keySubscribers = WebStorage.GetSubscribers(key);
         if (keySubscribers) {
-            keySubscribers.forEach(subscriber => {
+            keySubscribers.forEach((subscriber: (newValue: string, oldValue: string) => void) => {
                 subscriber(value, oldValue);
             });
         }
@@ -44,7 +83,7 @@ class WebStorage {
         localStorage.removeItem(key);
         let keySubscribers = WebStorage.GetSubscribers(key);
         if (keySubscribers) {
-            keySubscribers.forEach(subscriber => {
+            keySubscribers.forEach((subscriber: (newValue: null, oldValue: string) => void) => {
                 subscriber(null, oldValue);
             });
         }
@@ -76,19 +115,52 @@ class WebStorage {
     }
 }
 
-function RequestUserCredentials(withUsername: boolean): {username: string | null | undefined, password: string}  {
+async function RequestUserCredentials(): Promise<string>  {
     let password: string;
-    let username: string;
-
-    if (withUsername) {
-        username = prompt("Enter Username", "Admin");
-    }
 
     password = prompt("Enter Password", "password");
 
-    return {
-        username,
-        password
+    return password;
+}
+
+/*
+class WatchedVariable<T> {
+    private T: T;
+
+    private Subscribers: ((newValue: T, oldValue: T) => void)[] = [];
+
+    public Subscribe(callback: (newValue: T, oldValue: T) => void) {
+        this.Subscribers.push(callback);
+    }
+
+    public Unsubscribe(callback: (newValue: T, oldValue: T) => void) {
+        let index = this.Subscribers.indexOf(callback)
+        if (index > -1) {
+            this.Subscribers.splice(index, 1);
+        }
+    }
+
+    public Get(): T {
+        return this.T;
+    }
+
+    public Set(t: T): void {
+        let oldValue = this.T;
+        this.T = t;
+        this.Subscribers.forEach(subscriber => {
+            subscriber(t, oldValue);
+        });
+    }
+}
+*/
+
+class ValidationUtils {
+    public static SetInvalidText(input: HTMLInputElement, value: string = "") {
+        input.setCustomValidity(value);
+        let inputInvalid = input.nextElementSibling;
+        if (inputInvalid && inputInvalid.classList.contains("invalid-feedback")) {
+            inputInvalid.textContent = value;
+        }
     }
 }
 
@@ -106,8 +178,13 @@ class UniApi {
         return endpoints;
     }
 
+    public static InvalidateEndpoints() {
+        localStorage.removeItem("endpoints");
+        this.Endpoints = null;
+    }
+
     //region Enumerations
-    private static XHeaders = Object.freeze({
+    public static XHeaders = Object.freeze({
         XAuthUser: "X-Auth-User",
         XAuthPass: "X-Auth-Pass",
         XApiKey: "X-Api-Key", // Shouldn't be used by frontend - here for completeness
@@ -129,22 +206,6 @@ class UniApi {
     //endregion
 
     //region Request & Auth
-    public static async Login() {
-        const response = await UniApi.Request('POST', "cam", "User", "Login");
-
-        if (!response.ok) {
-            console.log("Failed Login");
-        }
-    };
-
-    public static async CreateAccount() {
-        const response = await UniApi.PostJson("cam", "User", "CreateAccount", RequestUserCredentials(true));
-
-        if (!response.ok) {
-            console.log("Failed Login");
-        }
-    }
-
     public static async PostJson(service: string, controller: string, action: string, body: object = {}, headers: object = {}): Promise<Response> {
         const defaultHeaders = {
             "Content-Type": "application/json"
@@ -153,7 +214,7 @@ class UniApi {
         return this.Request('POST', service, controller, action, JSON.stringify(body), {...defaultHeaders, ...headers});
     }
 
-    public static async Request(method: string, service: string, controller: string, action: string, body: any = null, headers: object = {}): Promise<Response> {
+    public static async Request(method: string, service: string, controller: string, action: string, body: any = null, headers: object = {}, queryParameters: string = ""): Promise<Response> {
 
         const defaultHeaders = {};
 
@@ -174,18 +235,19 @@ class UniApi {
                 break;
             case this.AuthTypes.StrictSessionAuth: // Session & credentials
                 defaultHeaders[UniApi.XHeaders.XAuthCSRF] = UniApi.RetrieveCSRFCookie();
-                defaultHeaders[UniApi.XHeaders.XAuthPass] = RequestUserCredentials(false).password;
+                defaultHeaders[UniApi.XHeaders.XAuthPass] = await RequestUserCredentials();
                 break;
-            case this.AuthTypes.CredentialAuth: // Credentials only
-                let userCredentials = RequestUserCredentials(true);
-                defaultHeaders[UniApi.XHeaders.XAuthUser] = userCredentials.username;
-                defaultHeaders[UniApi.XHeaders.XAuthPass] = userCredentials.password;
+            case this.AuthTypes.CredentialAuth: // Credentials only - for now, only login so we can ignore it as login passes in the correct items already
+                //let userCredentials = RequestUserCredentials(true);
+                //defaultHeaders[UniApi.XHeaders.XAuthUser] = userCredentials.username;
+                //defaultHeaders[UniApi.XHeaders.XAuthPass] = userCredentials.password;
                 break;
             case this.AuthTypes.ApiKeyAuth: // Api key - unsupported by frontend
+                Popups.Failure(`${url} maybe only be invoked via the api`);
                 throw new Error(`Requested endpoint only supports ApiKeyAuth: ${url}`);
         }
 
-        const response = await fetch(url, {
+        const response = await fetch(url + "?" + queryParameters, {
             method: method,
             body: body == null ? null : body,
             headers: {...defaultHeaders, ...headers},
@@ -196,27 +258,26 @@ class UniApi {
             console.log(`Request Informational Response: ${method} ${url}`);
         } else if (response.status >= 200 && response.status <= 299) { // Successful Response
             console.log(`Request Successful Response: ${method} ${url}`);
-            if (defaultHeaders[UniApi.XHeaders.XAuthUser]) {
-                WebStorage.Set("username", defaultHeaders[UniApi.XHeaders.XAuthUser]);
+            if ({...defaultHeaders, ...headers}[UniApi.XHeaders.XAuthUser]) {
+                WebStorage.Set("username", {...defaultHeaders, ...headers}[UniApi.XHeaders.XAuthUser]);
             }
         } else if (response.status >= 300 && response.status <= 399) { // Redirection Response
             console.log(`Request Redirection Response: ${method} ${url}`);
         } else if (response.status >= 400 && response.status <= 499) { // Client Error Response
             switch (response.status) {
                 case 401: // Unauthorized - not logged in, try logging in and attempting request again
-                    console.log(`Request Client Unauthorized Response: ${method} ${url}`);
                     if (AuthMethod == UniApi.AuthTypes.SessionAuth) {
-                        await this.Login();
-                        return this.Request(method, service, controller, action, body, headers);
+                        Popups.Failure("Please Login");
+                        WebStorage.Delete('username');
+                        // return this.Request(method, service, controller, action, body, headers, queryParameters);
                     } else if (AuthMethod == UniApi.AuthTypes.CredentialAuth) {
-                        alert(`Invalid Credentials: ${method} ${url}`);
-                    } else {
-                        alert(`Not Logged In: ${method} ${url}`);
+                        Popups.Failure("Invalid Credentials");
+                    } else if (AuthMethod == UniApi.AuthTypes.StrictSessionAuth) {
+                        Popups.Failure("Invalid Credentials");
                     }
                     break;
                 case 403: // Forbidden - logged in but insufficient permissions
-                    console.log(`Request Client Forbidden Response: ${method} ${url}`);
-                    alert(`Insufficient Permissions: ${method} ${url}`);
+                    Popups.Failure(`Insufficient Permissions: ${method} ${url}`);
                     break;
                 default:
                     console.log(`Request Client Error Response: ${method} ${url}`);
@@ -304,13 +365,140 @@ class UniApi {
     }
 }
 
-window.addEventListener('load', function() {
-    let welcome_message_element = document.getElementById("welcome-message");
-    WebStorage.Subscribe("username", (newValue, oldValue) => {
-        if (newValue) {
-            welcome_message_element.innerText = `Welcome ${newValue}`;
+//region Login & Create Account Modals
+
+let ValidateUsernameAvailable = Utils.Debounce(CreateAccountValidateUsernameAvailable, 200);
+async function CreateAccountValidateUsernameAvailable() {
+    const createUsernameElement = document.getElementById("create-username") as HTMLInputElement;
+    let newUsername = createUsernameElement.value;
+
+    if (Utils.NotNullOrEmpty(newUsername)) {
+        let result = await UniApi.Request("GET", "cam", "user", "UsernameAvailable", null, {}, `Username=${newUsername}`);
+        if (result.ok) {
+            let body = await result.body.getReader().read();
+            let available = (new TextDecoder().decode(body.value)).trim().toLowerCase() === 'true';
+            if (!available) {
+                ValidationUtils.SetInvalidText(createUsernameElement, `Username ${newUsername} unavailable`);
+                return;
+            }
         } else {
-            welcome_message_element.innerText = "Please Log In";
+            ValidationUtils.SetInvalidText(createUsernameElement, "Server could not validate availability of username");
+            return;
+        }
+    }
+
+    ValidationUtils.SetInvalidText(createUsernameElement);
+}
+
+function CreateAccountValidatePasswordConfirmation() {
+    const createPasswordElement = document.getElementById("create-password") as HTMLInputElement;
+    const createPasswordConfirmationElement = document.getElementById("create-password-confirm") as HTMLInputElement;
+
+    let newPassword = createPasswordElement.value;
+    let newPasswordConfirmation = createPasswordConfirmationElement.value;
+
+    if (Utils.NotNullOrEmpty(newPassword) && Utils.NotNullOrEmpty(newPasswordConfirmation)) {
+        if (newPasswordConfirmation != newPassword) {
+            ValidationUtils.SetInvalidText(createPasswordConfirmationElement, "Password confirmation does not match");
+            ValidationUtils.SetInvalidText(createPasswordElement, "Password confirmation does not match");
+            return;
+        }
+    }
+
+    ValidationUtils.SetInvalidText(createPasswordConfirmationElement);
+    ValidationUtils.SetInvalidText(createPasswordElement);
+}
+
+function CreateAccountCloseAndClear() {
+    ModalUtils.Close("create-account-modal");
+
+    const createUsernameElement = document.getElementById("create-username") as HTMLInputElement;
+    const createPasswordElement = document.getElementById("create-password") as HTMLInputElement;
+    const createPasswordConfirmationElement = document.getElementById("create-password-confirm") as HTMLInputElement;
+
+    createUsernameElement.value = "";
+    createPasswordElement.value = "";
+    createPasswordConfirmationElement.value = "";
+
+    ValidationUtils.SetInvalidText(createUsernameElement);
+    ValidationUtils.SetInvalidText(createPasswordElement);
+    ValidationUtils.SetInvalidText(createPasswordConfirmationElement);
+}
+
+async function CreateAccount() {
+    const createUsernameElement = document.getElementById("create-username") as HTMLInputElement;
+    const createPasswordElement = document.getElementById("create-password") as HTMLInputElement;
+    const createPasswordConfirmationElement = document.getElementById("create-password-confirm") as HTMLInputElement;
+
+    if (createUsernameElement.validity.valid && createPasswordElement.validity.valid && createPasswordConfirmationElement.validity.valid) {
+        let newUsername = createUsernameElement.value;
+        let newPassword = createPasswordElement.value;
+
+        let response = await UniApi.PostJson("cam", "User", "CreateAccount", {
+            Username: newUsername,
+            Password: newPassword
+        });
+
+        if (response.ok) {
+            Popups.Success("Account Created Successfully!");
+            CreateAccountCloseAndClear();
+        } else {
+            if (response.status == 409) {
+                ValidationUtils.SetInvalidText(createUsernameElement, `Username ${newUsername} unavailable`);
+            }
+        }
+    }
+}
+
+function LoginAccountCloseAndClear() {
+    ModalUtils.Close("login-modal");
+
+    const loginUsernameElement = document.getElementById("login-username") as HTMLInputElement;
+    const loginPasswordElement = document.getElementById("login-password") as HTMLInputElement;
+
+    loginUsernameElement.value = "";
+    loginPasswordElement.value = "";
+
+    ValidationUtils.SetInvalidText(loginUsernameElement);
+    ValidationUtils.SetInvalidText(loginPasswordElement);
+}
+
+async function LoginAccount() {
+    const loginUsernameElement = document.getElementById("login-username") as HTMLInputElement;
+    const loginPasswordElement = document.getElementById("login-password") as HTMLInputElement;
+
+    if (loginUsernameElement.validity.valid && loginPasswordElement.validity.valid) {
+        let username = loginUsernameElement.value;
+        let password = loginPasswordElement.value;
+
+        let response = await UniApi.Request('POST', "cam", "User", "Login", null, {
+            [UniApi.XHeaders.XAuthUser]: username,
+            [UniApi.XHeaders.XAuthPass]: password
+        });
+
+        if (response.ok) {
+            LoginAccountCloseAndClear();
+        } else {
+            if (response.status == 401) {
+                ValidationUtils.SetInvalidText(loginUsernameElement, "Username or password is incorrect");
+                ValidationUtils.SetInvalidText(loginPasswordElement, "Username or password is incorrect");
+            }
+        }
+    }
+}
+//endregion
+
+window.addEventListener('load', function() {
+    const headerLogins = document.getElementById('header-logins');
+    WebStorage.Subscribe('username', (newValue, oldValue) => {
+        console.log(`New: ${newValue} Old: ${oldValue}`)
+        if (newValue) {
+            headerLogins.classList.add('d-none');
+            if (newValue != oldValue) {
+                Popups.Success(`Welcome ${newValue}`);
+            }
+        } else {
+            headerLogins.classList.remove('d-none');
         }
     }, true);
 });
