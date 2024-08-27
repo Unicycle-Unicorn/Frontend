@@ -247,7 +247,7 @@ class UniApi {
                 throw new Error(`Requested endpoint only supports ApiKeyAuth: ${url}`);
         }
 
-        const response = await fetch(url + "?" + queryParameters, {
+        const response = await fetch(url + queryParameters, {
             method: method,
             body: body == null ? null : body,
             headers: {...defaultHeaders, ...headers},
