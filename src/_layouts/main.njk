@@ -10,65 +10,86 @@ layout: page.njk
 <!-- Login Modal -->
 <div class="modal fade" id="login-modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="login-label" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+        <form class="modal-content" oninput="LoginModal.Update()">
             <div class="modal-header">
                 <h5 class="modal-title" id="login-label">Login</h5>
-                <button type="button" class="btn-close btn-close-white" onclick="LoginAccountCloseAndClear()" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white modal-exit" onclick="LoginModal.Exit()" aria-label="Close"></button>
             </div>
             <div class="modal-body was-validated">
                 <div class="mb-3">
                     <label for="login-username" class="form-label">Username</label>
-                    <input type="text" class="form-control text-white" required id="login-username" oninput="LoginAccountResetValidation()">
+                    <input type="text" class="form-control text-white" required id="login-username">
                     <div class="invalid-feedback"></div>
                 </div>
                 <div class="mb-3">
                     <label for="login-password" class="form-label">Password</label>
-                    <input type="password" class="form-control text-white" required id="login-password" oninput="LoginAccountResetValidation()">
+                    <input type="password" class="form-control text-white" required id="login-password">
                     <div class="invalid-feedback"></div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" onclick="LoginAccountCloseAndClear()">Cancel</button>
-                <button type="button" class="btn btn-secondary" onclick="LoginAccount()">Login</button>
+                <button type="button" class="btn btn-primary modal-exit" onclick="LoginModal.Exit()">Cancel</button>
+                <button type="button" class="btn btn-secondary modal-submit" disabled onclick="LoginModal.Submit()">Login</button>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 
 <!-- Create Account Modal -->
 <div class="modal fade" id="create-account-modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="create-account-label" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+        <form class="modal-content" oninput="CreateAccountModal.Update()">
             <div class="modal-header">
                 <h5 class="modal-title" id="create-account-label">Create Account</h5>
-                <button type="button" class="btn-close btn-close-white" onclick="CreateAccountCloseAndClear()" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white modal-exit" onclick="CreateAccountModal.Exit()" aria-label="Close"></button>
             </div>
             <div class="modal-body was-validated">
                 <div class="mb-3">
                     <label for="create-username" class="form-label">Username</label>
-                    <input type="text" class="form-control text-white" required id="create-username" oninput="ValidateUsernameAvailable()">
+                    <input type="text" class="form-control text-white" required id="create-username">
                     <div class="invalid-feedback"></div>
                 </div>
                 <div class="mb-3">
                     <label for="create-password" class="form-label">Password</label>
-                    <input type="password" class="form-control text-white" required id="create-password" oninput="CreateAccountValidatePasswordConfirmation()">
+                    <input type="password" class="form-control text-white" required id="create-password">
                     <div class="invalid-feedback"></div>
                 </div>
                 <div class="mb-3">
                     <label for="create-password-confirm" class="form-label">Password Confirmation</label>
-                    <input type="password" class="form-control text-white" required id="create-password-confirm" oninput="CreateAccountValidatePasswordConfirmation()">
+                    <input type="password" class="form-control text-white" required id="create-password-confirm">
                     <div class="invalid-feedback"></div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" onclick="CreateAccountCloseAndClear()">Cancel</button>
-                <button type="button" class="btn btn-secondary" onclick="CreateAccount()">Create Account</button>
+                <button type="button" class="btn btn-primary modal-exit" onclick="CreateAccountModal.Exit()">Cancel</button>
+                <button type="button" class="btn btn-secondary modal-submit" disabled onclick="CreateAccountModal.Submit()">Create Account</button>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 
 <!-- Password Modal -->
+<div class="modal fade" id="password-modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="password-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content" oninput="PasswordModal.Update()">
+            <div class="modal-header">
+                <h5 class="modal-title" id="password-label">Create Account</h5>
+                <button type="button" class="btn-close btn-close-white modal-exit" onclick="PasswordModal.Exit()" aria-label="Close"></button>
+            </div>
+            <div class="modal-body was-validated">
+                <div class="mb-3">
+                    <label for="enter-password" class="form-label">Password</label>
+                    <input type="password" class="form-control text-white" required id="enter-password">
+                    <div class="invalid-feedback"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary modal-exit" onclick="PasswordModal.Exit()">Cancel</button>
+                <button type="button" class="btn btn-secondary modal-submit" disabled onclick="PasswordModal.Submit()">Submit</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- MODALS
 LOGIN
@@ -77,3 +98,6 @@ CREATE ACCOUNT
 
 CONFIRMATION
 -->
+
+<!-- Toast Region -->
+<div class="toast-container position-fixed bottom-0 end-0 p-4" id="notification-area"></div>

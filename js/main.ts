@@ -1,25 +1,220 @@
+/*
+class WatchedVariable<T> {
+    private T: T;
+
+    private Subscribers: ((newValue: T, oldValue: T) => void)[] = [];
+
+    public Subscribe(callback: (newValue: T, oldValue: T) => void) {
+        this.Subscribers.push(callback);
+    }
+
+    public Unsubscribe(callback: (newValue: T, oldValue: T) => void) {
+        let index = this.Subscribers.indexOf(callback)
+        if (index > -1) {
+            this.Subscribers.splice(index, 1);
+        }
+    }
+
+    public Get(): T {
+        return this.T;
+    }
+
+    public Set(t: T): void {
+        let oldValue = this.T;
+        this.T = t;
+        this.Subscribers.forEach(subscriber => {
+            subscriber(t, oldValue);
+        });
+    }
+}
+*/
 
 class Popups {
+    private static NotificationTimeout = 3000;
+
     public static Success(content: string) {
         console.log(content);
-        alert(content);
+        //alert(content);
+        this.GenerateToast(content);
     }
 
     public static Failure(content: string) {
         console.error(content);
-        alert(content);
+        //alert(content);
+        this.GenerateToast(content);
+    }
+
+    private static GenerateToast(content: string) {
+        let id = Popups.GenerateId(5);
+
+        let toast = `<div class="toast show bg-secondary-subtle" role="alert" aria-live="assertive" aria-atomic="true" id="${id}">
+        <div class="toast-header bg-secondary text-white">
+            <strong class="me-auto">Toast Message</strong>
+            <button type="button" class="btn-close btn-close-white" aria-label="Close" onclick="Popups.RemoveToast('${id}')"></button>
+        </div>
+        <div class="toast-body text-black">
+            ${content}
+        </div>
+    </div>`;
+
+        const notificationRegion = document.getElementById('notification-area');
+
+
+        notificationRegion.insertAdjacentHTML('beforeend', toast);
+
+        setTimeout(() => this.RemoveToast(id), Popups.NotificationTimeout);
+    }
+
+    public static RemoveToast(id: string) {
+        let element = document.getElementById(id);
+        if (element) {
+            element.remove();
+        }
+    }
+
+    private static GenerateId(length: number) {
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        const charactersLength = characters.length;
+        let counter = 0;
+        while (counter < length) {
+            result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            counter += 1;
+        }
+        return result;
     }
 }
 
-class ModalUtils {
-    public static Close(id: string) {
-        // @ts-ignore
-        bootstrap.Modal.getOrCreateInstance(document.getElementById(id)).hide();
+class DeferredPromise<T> {
+    private readonly Promise: Promise<T>;
+    private Resolver: (value: T | PromiseLike<T>) => void;
+    private Rejecter: (reason?: any) => void;
+
+    constructor() {
+        this.Promise = new Promise<T>((resolve, reject) => {
+            this.Resolver = resolve;
+            this.Rejecter = reject;
+        });
     }
 
-    public static Open(id: string) {
+    public Resolve(value: T): void {
+        this.Resolver(value);
+    }
+
+    public Reject(reason: any) {
+        this.Rejecter(reason);
+    }
+
+    public GetPromise(): Promise<T> {
+        return this.Promise;
+    }
+}
+
+class Modal<T> {
+    private readonly ModalElement: HTMLDivElement;
+    private readonly FormElement: null | HTMLFormElement;
+    private readonly InvalidFeedbacks: HTMLCollectionOf<Element>;
+    private ModalDeferredPromise = null;
+    private readonly SubmitterCallback: () => T;
+    private readonly ValidationCallback: () => void;
+
+    public constructor(id: string, submitCallback: () => T, validationCallback: () => void = null) {
+        this.ModalElement = document.getElementById(id) as HTMLDivElement;
+        this.FormElement = this.ModalElement.getElementsByTagName('form')[0];
+        this.InvalidFeedbacks = this.ModalElement.getElementsByClassName('invalid-feedback');
+        this.SubmitterCallback = submitCallback;
+        this.ValidationCallback = validationCallback;
+
+        this.FormElement.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            await this.Submit();
+            return false;
+        })
+    }
+
+    public async Submit() {
+        if (this.IsValid()) {
+            let result = await this.SubmitterCallback();
+            if (this.ModalDeferredPromise) {
+                this.ModalDeferredPromise.Resolve(result);
+                this.ModalDeferredPromise = null;
+            }
+        }
+    }
+
+    public Open(): Promise<T> {
+        this.ModalDeferredPromise = new DeferredPromise<T>();
+        this.Show();
+        return this.ModalDeferredPromise.GetPromise();
+    }
+
+    public Exit() {
+        if (this.ModalDeferredPromise) {
+            this.ModalDeferredPromise.Reject("Closed By User");
+        }
+
+        this.Close();
+    }
+
+    public Update() {
+        if (this.ValidationCallback) {
+            this.ValidationCallback();
+        }
+        this.UpdateSubmitButtons();
+    }
+
+    public UpdateSubmitButtons() {
+        if (this.FormElement) {
+            let isValid = this.IsValid();
+            console.log(isValid);
+            this.FormElement.querySelectorAll("button.modal-submit").forEach((submitButton: HTMLButtonElement) => {
+
+                submitButton.disabled = !isValid;
+            });
+        }
+    }
+
+    private Show() {
         // @ts-ignore
-        bootstrap.Modal.getOrCreateInstance(document.getElementById(id)).show();
+        bootstrap.Modal.getOrCreateInstance(this.ModalElement).show();
+    }
+
+    public Close() {
+        // @ts-ignore
+        bootstrap.Modal.getOrCreateInstance(this.ModalElement).hide();
+
+        this.ResetForm();
+        this.ResetInvalidFeedbacks();
+
+        this.ModalDeferredPromise = null;
+    }
+
+    public ResetInvalidFeedbacks() {
+        for (let invalidFeedback of this.InvalidFeedbacks) {
+            invalidFeedback.textContent = "";
+        }
+    }
+
+    private ResetForm() {
+        if (this.FormElement) {
+            this.FormElement.reset();
+        }
+    }
+
+    private IsValid() {
+        if (this.FormElement) {
+            return this.FormElement.checkValidity();
+        } else {
+            return true;
+        }
+    }
+
+    public SetInvalidText(input: HTMLInputElement, value: string = "") {
+        input.setCustomValidity(value);
+        let inputInvalid = input.nextElementSibling;
+        if (inputInvalid && inputInvalid.classList.contains("invalid-feedback")) {
+            inputInvalid.textContent = value;
+        }
     }
 }
 
@@ -121,47 +316,6 @@ async function RequestUserCredentials(): Promise<string>  {
     password = prompt("Enter Password", "password");
 
     return password;
-}
-
-/*
-class WatchedVariable<T> {
-    private T: T;
-
-    private Subscribers: ((newValue: T, oldValue: T) => void)[] = [];
-
-    public Subscribe(callback: (newValue: T, oldValue: T) => void) {
-        this.Subscribers.push(callback);
-    }
-
-    public Unsubscribe(callback: (newValue: T, oldValue: T) => void) {
-        let index = this.Subscribers.indexOf(callback)
-        if (index > -1) {
-            this.Subscribers.splice(index, 1);
-        }
-    }
-
-    public Get(): T {
-        return this.T;
-    }
-
-    public Set(t: T): void {
-        let oldValue = this.T;
-        this.T = t;
-        this.Subscribers.forEach(subscriber => {
-            subscriber(t, oldValue);
-        });
-    }
-}
-*/
-
-class ValidationUtils {
-    public static SetInvalidText(input: HTMLInputElement, value: string = "") {
-        input.setCustomValidity(value);
-        let inputInvalid = input.nextElementSibling;
-        if (inputInvalid && inputInvalid.classList.contains("invalid-feedback")) {
-            inputInvalid.textContent = value;
-        }
-    }
 }
 
 class UniApi {
@@ -365,12 +519,44 @@ class UniApi {
     }
 }
 
-//region Login & Create Account Modals
+//region Modals
+//region PasswordModal
+const PasswordModal = new Modal<string>('password-modal', PasswordModal_Submit);
 
+const PasswordModal_PasswordElement = document.getElementById('enter-password') as HTMLInputElement;
+function PasswordModal_Submit() {
+    return PasswordModal_PasswordElement.value;
+}
+
+async function LogCredentials() {
+    let password = await PasswordModal.Open();
+    PasswordModal.Close();
+    console.log(password);
+}
+//endregion
+//region CreateAccountModal
 let ValidateUsernameAvailable = Utils.Debounce(CreateAccountValidateUsernameAvailable, 200);
+
+const CreateAccountModal_UsernameElement = document.getElementById("create-username") as HTMLInputElement;
+const CreateAccountModal_PasswordElement = document.getElementById("create-password") as HTMLInputElement;
+const CreateAccountModal_PasswordConfirmationElement = document.getElementById("create-password-confirm") as HTMLInputElement;
+
+const CreateAccountModal = new Modal<{username: string, password: string}>("create-account-modal", CreateAccountModal_Submit, CreateAccountModal_Validate);
+
+function CreateAccountModal_Submit() {
+    return {
+        username: CreateAccountModal_UsernameElement.value,
+        password: CreateAccountModal_PasswordElement.value
+    }
+}
+
+function CreateAccountModal_Validate() {
+    ValidateUsernameAvailable();
+    CreateAccountValidatePasswordConfirmation();
+}
+
 async function CreateAccountValidateUsernameAvailable() {
-    const createUsernameElement = document.getElementById("create-username") as HTMLInputElement;
-    let newUsername = createUsernameElement.value;
+    let newUsername = CreateAccountModal_UsernameElement.value;
 
     if (Utils.NotNullOrEmpty(newUsername)) {
         let result = await UniApi.Request("GET", "cam", "user", "UsernameAvailable", null, {}, `Username=${newUsername}`);
@@ -378,133 +564,106 @@ async function CreateAccountValidateUsernameAvailable() {
             let body = await result.body.getReader().read();
             let available = (new TextDecoder().decode(body.value)).trim().toLowerCase() === 'true';
             if (!available) {
-                ValidationUtils.SetInvalidText(createUsernameElement, `Username ${newUsername} unavailable`);
+                CreateAccountModal.SetInvalidText(CreateAccountModal_UsernameElement, `Username ${newUsername} unavailable`);
+                CreateAccountModal.UpdateSubmitButtons();
                 return;
             }
         } else {
-            ValidationUtils.SetInvalidText(createUsernameElement, "Server could not validate availability of username");
+            CreateAccountModal.SetInvalidText(CreateAccountModal_UsernameElement, "Server could not validate availability of username");
+            CreateAccountModal.UpdateSubmitButtons();
             return;
         }
     }
 
-    ValidationUtils.SetInvalidText(createUsernameElement);
+    CreateAccountModal.SetInvalidText(CreateAccountModal_UsernameElement);
+    CreateAccountModal.UpdateSubmitButtons();
 }
 
 function CreateAccountValidatePasswordConfirmation() {
-    const createPasswordElement = document.getElementById("create-password") as HTMLInputElement;
-    const createPasswordConfirmationElement = document.getElementById("create-password-confirm") as HTMLInputElement;
 
-    let newPassword = createPasswordElement.value;
-    let newPasswordConfirmation = createPasswordConfirmationElement.value;
+    let newPassword = CreateAccountModal_PasswordElement.value;
+    let newPasswordConfirmation = CreateAccountModal_PasswordConfirmationElement.value;
 
     if (Utils.NotNullOrEmpty(newPassword) && Utils.NotNullOrEmpty(newPasswordConfirmation)) {
         if (newPasswordConfirmation != newPassword) {
-            ValidationUtils.SetInvalidText(createPasswordConfirmationElement, "Password confirmation does not match");
-            ValidationUtils.SetInvalidText(createPasswordElement, "Password confirmation does not match");
+            CreateAccountModal.SetInvalidText(CreateAccountModal_PasswordConfirmationElement, "Password confirmation does not match");
+            CreateAccountModal.SetInvalidText(CreateAccountModal_PasswordElement, "Password confirmation does not match");
             return;
         }
     }
 
-    ValidationUtils.SetInvalidText(createPasswordConfirmationElement);
-    ValidationUtils.SetInvalidText(createPasswordElement);
-}
-
-function CreateAccountCloseAndClear() {
-    ModalUtils.Close("create-account-modal");
-
-    const createUsernameElement = document.getElementById("create-username") as HTMLInputElement;
-    const createPasswordElement = document.getElementById("create-password") as HTMLInputElement;
-    const createPasswordConfirmationElement = document.getElementById("create-password-confirm") as HTMLInputElement;
-
-    createUsernameElement.value = "";
-    createPasswordElement.value = "";
-    createPasswordConfirmationElement.value = "";
-
-    ValidationUtils.SetInvalidText(createUsernameElement);
-    ValidationUtils.SetInvalidText(createPasswordElement);
-    ValidationUtils.SetInvalidText(createPasswordConfirmationElement);
+    CreateAccountModal.SetInvalidText(CreateAccountModal_PasswordConfirmationElement);
+    CreateAccountModal.SetInvalidText(CreateAccountModal_PasswordElement);
 }
 
 async function CreateAccount() {
-    const createUsernameElement = document.getElementById("create-username") as HTMLInputElement;
-    const createPasswordElement = document.getElementById("create-password") as HTMLInputElement;
-    const createPasswordConfirmationElement = document.getElementById("create-password-confirm") as HTMLInputElement;
+    let result = await CreateAccountModal.Open();
 
-    if (createUsernameElement.validity.valid && createPasswordElement.validity.valid && createPasswordConfirmationElement.validity.valid) {
-        let newUsername = createUsernameElement.value;
-        let newPassword = createPasswordElement.value;
+    let response = await UniApi.PostJson("cam", "User", "CreateAccount", {
+        Username: result.username,
+        Password: result.password
+    });
 
-        let response = await UniApi.PostJson("cam", "User", "CreateAccount", {
-            Username: newUsername,
-            Password: newPassword
-        });
-
-        if (response.ok) {
-            Popups.Success("Account Created Successfully!");
-            CreateAccountCloseAndClear();
-        } else {
-            if (response.status == 409) {
-                ValidationUtils.SetInvalidText(createUsernameElement, `Username ${newUsername} unavailable`);
-            }
+    if (response.ok) {
+        Popups.Success("Account Created Successfully!");
+    } else {
+        if (response.status == 409) {
+            CreateAccountModal.SetInvalidText(CreateAccountModal_UsernameElement, `Username ${result.username} unavailable`);
+            await CreateAccount();
         }
     }
+
+    CreateAccountModal.Close();
 }
+//endregion
+//region LoginModal
+const LoginModal_UsernameElement = document.getElementById("login-username") as HTMLInputElement;
+const LoginModal_PasswordElement = document.getElementById("login-password") as HTMLInputElement;
 
-function LoginAccountCloseAndClear() {
-    ModalUtils.Close("login-modal");
+const LoginModal = new Modal<{username: string, password: string}>('login-modal', LoginModal_Submit, () => {
+    LoginModal.ResetInvalidFeedbacks();
+    LoginModal.SetInvalidText(LoginModal_UsernameElement);
+    LoginModal.SetInvalidText(LoginModal_PasswordElement);
+});
 
-    const loginUsernameElement = document.getElementById("login-username") as HTMLInputElement;
-    const loginPasswordElement = document.getElementById("login-password") as HTMLInputElement;
-
-    loginUsernameElement.value = "";
-    loginPasswordElement.value = "";
-
-    ValidationUtils.SetInvalidText(loginUsernameElement);
-    ValidationUtils.SetInvalidText(loginPasswordElement);
-}
-
-function LoginAccountResetValidation() {
-    const loginUsernameElement = document.getElementById("login-username") as HTMLInputElement;
-    const loginPasswordElement = document.getElementById("login-password") as HTMLInputElement;
-
-    ValidationUtils.SetInvalidText(loginUsernameElement);
-    ValidationUtils.SetInvalidText(loginPasswordElement);
+function LoginModal_Submit() {
+    return {
+        username: LoginModal_UsernameElement.value,
+        password: LoginModal_PasswordElement.value
+    }
 }
 
 async function LoginAccount() {
-    const loginUsernameElement = document.getElementById("login-username") as HTMLInputElement;
-    const loginPasswordElement = document.getElementById("login-password") as HTMLInputElement;
+    let result = await LoginModal.Open();
 
-    if (loginUsernameElement.validity.valid && loginPasswordElement.validity.valid) {
-        let username = loginUsernameElement.value;
-        let password = loginPasswordElement.value;
+    console.log(result);
+    // await LoginAccount();
 
-        let response = await UniApi.Request('POST', "cam", "User", "Login", null, {
-            [UniApi.XHeaders.XAuthUser]: username,
-            [UniApi.XHeaders.XAuthPass]: password
-        });
+    let response = await UniApi.Request('POST', "cam", "User", "Login", null, {
+        [UniApi.XHeaders.XAuthUser]: result.username,
+        [UniApi.XHeaders.XAuthPass]: result.password
+    });
 
-        if (response.ok) {
-            LoginAccountCloseAndClear();
-        } else {
-            ValidationUtils.SetInvalidText(loginUsernameElement, "Incorrect credentials");
-            ValidationUtils.SetInvalidText(loginPasswordElement, "Incorrect credentials");
-        }
+    if (response.ok) {
+        LoginModal.Close();
+    } else {
+        LoginModal.SetInvalidText(LoginModal_UsernameElement, "Incorrect credentials");
+        LoginModal.SetInvalidText(LoginModal_PasswordElement, "Incorrect credentials");
+        await LoginAccount();
     }
 }
 //endregion
+//endregion
 
-window.addEventListener('load', function() {
-    const headerLogins = document.getElementById('header-logins');
-    WebStorage.Subscribe('username', (newValue, oldValue) => {
-        console.log(`New: ${newValue} Old: ${oldValue}`)
-        if (newValue) {
-            headerLogins.classList.add('d-none');
-            if (newValue != oldValue) {
-                Popups.Success(`Welcome ${newValue}`);
-            }
-        } else {
-            headerLogins.classList.remove('d-none');
+
+const headerLogins = document.getElementById('header-logins');
+WebStorage.Subscribe('username', (newValue, oldValue) => {
+    if (newValue) {
+        headerLogins.classList.add('d-none');
+        if (newValue != oldValue) {
+            Popups.Success(`Welcome ${newValue}`);
         }
-    }, true);
-});
+    } else {
+        headerLogins.classList.remove('d-none');
+    }
+}, true);

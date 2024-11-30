@@ -45,10 +45,12 @@ module.exports = async function(data) {
         </a>
         
         <span class="nav-item ps-4 d-none" id="header-logins">
-            <button type="button" class="nav-item btn text-white rounded-3 btn-secondary" onclick="ModalUtils.Open('login-modal')">Log In</button>
-            <button type="button" class="nav-item btn text-white rounded-3 btn-secondary" onclick="ModalUtils.Open('create-account-modal')">Create Account</button>
+            <button type="button" class="nav-item btn text-white rounded-3 btn-secondary" onclick="LoginAccount()">Log In</button>
+            <button type="button" class="nav-item btn text-white rounded-3 btn-secondary" onclick="CreateAccount()">Create Account</button>
         </span>
-        
+                
+        <button type="button" class="nav-item btn text-white rounded-3 btn-secondary" onclick="LogCredentials()">Enter Password for Fun</button>
+                
         <span class="nav-item ps-4" id="page-title">
             ${this.page.fileSlug !== "" ? this.page.fileSlug : "Home"}
         </span>
